@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-50: #f2f5fb;
+  --color-ink-100: #dfe6f3;
+  --color-ink-600: #3b5b9d;
+  --color-ink-700: #2f4a82;
+  --color-ink-900: #1b2a4a;
+  --color-sand-100: #f6ecd9;
+  --color-sand-500: #d39b45;
+}
+
+body {
+  @apply bg-ink-50 text-slate-800 antialiased;
+}

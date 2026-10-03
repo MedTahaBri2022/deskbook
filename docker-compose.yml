@@ -1,0 +1,42 @@
+# Local stack: PostgreSQL, the API (with demo data) and the web app.
+#   docker compose up -d --build      → http://localhost:8082
+# The secrets below are development defaults; override them in a .env file.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: deskbook
+      POSTGRES_USER: deskbook
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-deskbook}
+    ports:
+      - '5434:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U deskbook']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      ConnectionStrings__DeskBook: Host=postgres;Database=deskbook;Username=deskbook;Password=${DATABASE_PASSWORD:-deskbook}
+      Jwt__Secret: ${JWT_SECRET:-local-development-secret-change-me-0123456789}
+      DemoData: 'true'
+    ports:
+      - '8090:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    ports:
+      - '8082:80'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/api/">
+    <Project Path="api/DeskBook.Api/DeskBook.Api.csproj" />
+    <Project Path="api/DeskBook.Tests/DeskBook.Tests.csproj" />
+  </Folder>
+</Solution>

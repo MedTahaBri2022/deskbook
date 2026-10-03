@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API (.NET unit + integration tests on PostgreSQL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore DeskBook.slnx
+      - run: dotnet build DeskBook.slnx --no-restore -c Release
+      # Testcontainers starts PostgreSQL with the runner's Docker.
+      - run: dotnet test DeskBook.slnx --no-build -c Release --logger "trx" --collect:"XPlat Code Coverage"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: api/DeskBook.Tests/TestResults
+
+  web:
+    name: Web (tests and build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  stack:
+    name: Docker stack (images build, API healthy, login and day view work)
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d --build --wait
+      - name: Log in through nginx and read the rooms of a day
+        run: |
+          TOKEN=$(curl -sf -X POST localhost:8082/api/auth/login \
+            -H 'Origin: http://localhost:8082' -H 'Content-Type: application/json' \
+            -d '{"email":"nadia@example.com","password":"password"}' | jq -r .token)
+          curl -sf "localhost:8082/api/rooms/day?date=$(date -d tomorrow +%F)" -H "Authorization: Bearer $TOKEN" | tee day.json
+          test "$(jq length day.json)" -eq 4
+      - if: failure()
+        run: docker compose logs api
